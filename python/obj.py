@@ -24,16 +24,16 @@ class Obj:
         self.lo = min(xs)
         self.hi = max(xs)
 
-    def swim(self, time, A=0.3):
+    def swim(self, time, amp=lambda t: 0.3 * t**2, freq=1):
         new_verts = []
         for v in self.verts:
             t = (self.hi - v[self.length]) / (self.hi - self.lo)
             p = list(v)
-            p[self.side] += A * t * t * math.sin(2 * math.pi * t - 6 * time)
+            p[self.side] += amp(t) * math.sin(2 * math.pi * (t - freq * time))
             new_verts.append(p)
         return new_verts
 
-    def spine(self, time, A=0.3, n=50):
+    def spine(self, time, amp=lambda t: 0.3 * t**2, freq=1, n=50):
         centre = [(min(v[i] for v in self.verts) + max(v[i] for v in self.verts)) / 2 for i in range(3)]
         rest = []
         spine = []
@@ -41,22 +41,22 @@ class Obj:
         lower = []
         for i in range(n + 1):
             t = i / n
-            amp = A * t * t
+            a = amp(t)
             p = list(centre)
             p[self.length] = self.hi - t * (self.hi - self.lo)
             rest.append(list(p))
-            p[self.side] = centre[self.side] + amp
+            p[self.side] = centre[self.side] + a
             upper.append(list(p))
-            p[self.side] = centre[self.side] - amp
+            p[self.side] = centre[self.side] - a
             lower.append(list(p))
-            p[self.side] = centre[self.side] + amp * math.sin(2 * math.pi * t - 6 * time)
+            p[self.side] = centre[self.side] + a * math.sin(2 * math.pi * (t - freq * time))
             spine.append(list(p))
         return rest, spine, upper, lower
 
     def triangles(self, verts):
         return [[(verts[i][0], verts[i][2], verts[i][1]) for i in f] for f in self.faces]
 
-    def view_animation(self, show_spine=False, A=0.3):
+    def view_animation(self, show_spine=False, amp=lambda t: 0.3 * t**2, freq=1):
         r = max(abs(x) for v in self.verts for x in v)
         ax = plt.figure().add_subplot(projection="3d")
         ax.set(xlim=(-r, r), ylim=(-r, r), zlim=(-r, r), box_aspect=(1, 1, 1))
@@ -71,9 +71,9 @@ class Obj:
 
         def update(frame):
             time = frame * 30 / 1000
-            poly.set_verts(self.triangles(self.swim(time, A)))
+            poly.set_verts(self.triangles(self.swim(time, amp, freq)))
             if show_spine:
-                for line, pts in zip(lines, self.spine(time, A)):
+                for line, pts in zip(lines, self.spine(time, amp, freq)):
                     line.set_data_3d([p[0] for p in pts], [p[2] for p in pts], [p[1] for p in pts])
 
         anim = FuncAnimation(ax.figure, update, interval=30, cache_frame_data=False)
