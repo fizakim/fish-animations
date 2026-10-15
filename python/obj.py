@@ -7,36 +7,74 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 class Obj:
     def __init__(self, path, length=0, side=2, step=1):
-        self.length, self.side = length, side
-        self.verts, self.faces = [], []
+        self.length = length
+        self.side = side
+        self.verts = []
+        self.faces = []
         for line in open(path):
-            kind, *vals = line.split() or [None]
-            if kind == "v":
-                self.verts.append([float(x) for x in vals])
-            elif kind == "f":
-                self.faces.append([int(i.split("/")[0]) - 1 for i in vals])
+            parts = line.split()
+            if len(parts) == 0:
+                continue
+            if parts[0] == "v":
+                self.verts.append([float(x) for x in parts[1:]])
+            elif parts[0] == "f":
+                self.faces.append([int(x.split("/")[0]) - 1 for x in parts[1:]])
         self.faces = self.faces[::step]
+        xs = [v[length] for v in self.verts]
+        self.lo = min(xs)
+        self.hi = max(xs)
 
-    def tris(self, verts):
+    def swim(self, time, A=0.3):
+        new_verts = []
+        for v in self.verts:
+            t = (self.hi - v[self.length]) / (self.hi - self.lo)
+            p = list(v)
+            p[self.side] += A * t * t * math.sin(2 * math.pi * t - 6 * time)
+            new_verts.append(p)
+        return new_verts
+
+    def spine(self, time, A=0.3, n=50):
+        centre = [(min(v[i] for v in self.verts) + max(v[i] for v in self.verts)) / 2 for i in range(3)]
+        rest = []
+        spine = []
+        upper = []
+        lower = []
+        for i in range(n + 1):
+            t = i / n
+            amp = A * t * t
+            p = list(centre)
+            p[self.length] = self.hi - t * (self.hi - self.lo)
+            rest.append(list(p))
+            p[self.side] = centre[self.side] + amp
+            upper.append(list(p))
+            p[self.side] = centre[self.side] - amp
+            lower.append(list(p))
+            p[self.side] = centre[self.side] + amp * math.sin(2 * math.pi * t - 6 * time)
+            spine.append(list(p))
+        return rest, spine, upper, lower
+
+    def triangles(self, verts):
         return [[(verts[i][0], verts[i][2], verts[i][1]) for i in f] for f in self.faces]
 
-    def swim(self, time, A=0.3, k=2 * math.pi, omega=6, c=(0, 0, 1)):
-        xs = [v[self.length] for v in self.verts]
-        lo, hi = min(xs), max(xs)
-        out = []
-        for v in self.verts:
-            t = (hi - v[self.length]) / (hi - lo)
-            amp = A * (c[0] + c[1] * t + c[2] * t * t)
-            p = list(v)
-            p[self.side] += amp * math.sin(k * t - omega * time)
-            out.append(p)
-        return out
-
-    def view_animation(self, interval=30, **swim_args):
+    def view_animation(self, show_spine=False, A=0.3):
         r = max(abs(x) for v in self.verts for x in v)
         ax = plt.figure().add_subplot(projection="3d")
         ax.set(xlim=(-r, r), ylim=(-r, r), zlim=(-r, r), box_aspect=(1, 1, 1))
-        poly = Poly3DCollection(self.tris(self.verts), facecolors="orange", edgecolors="black")
+        poly = Poly3DCollection(self.triangles(self.verts), facecolors="orange", edgecolors="black", alpha=0.3 if show_spine else 1)
         ax.add_collection3d(poly)
-        anim = FuncAnimation(ax.figure, lambda n: poly.set_verts(self.tris(self.swim(n * interval / 1000, **swim_args))), interval=interval, cache_frame_data=False)
+        lines = [
+            ax.plot([], [], [], color="grey", ls="--", zorder=10)[0],
+            ax.plot([], [], [], color="red", lw=3, zorder=10)[0],
+            ax.plot([], [], [], color="blue", ls=":", zorder=10)[0],
+            ax.plot([], [], [], color="blue", ls=":", zorder=10)[0],
+        ]
+
+        def update(frame):
+            time = frame * 30 / 1000
+            poly.set_verts(self.triangles(self.swim(time, A)))
+            if show_spine:
+                for line, pts in zip(lines, self.spine(time, A)):
+                    line.set_data_3d([p[0] for p in pts], [p[2] for p in pts], [p[1] for p in pts])
+
+        anim = FuncAnimation(ax.figure, update, interval=30, cache_frame_data=False)
         plt.show()
