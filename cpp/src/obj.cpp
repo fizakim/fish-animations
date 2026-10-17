@@ -1,6 +1,9 @@
 #define _USE_MATH_DEFINES
 #include "obj.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
 #include <GLFW/glfw3.h>
 
 #include <algorithm>
@@ -9,23 +12,31 @@
 #include <sstream>
 using namespace std;
 
-Obj::Obj(string path, int length, int side, function<float(float)> amp, float freq, float wl)
-    : length(length), side(side), amp(amp), freq(freq), wl(wl) {
+Obj::Obj(string path, int length, int side, function<float(float)> amp, float freq, float wl, string skin)
+    : length(length), side(side), amp(amp), freq(freq), wl(wl), skin(skin) {
     ifstream file(path);
     string line;
     while (getline(file, line)) {
         istringstream s(line);
         string tag;
         s >> tag;
-        if (tag == "v") {
+        if (tag == "vt") {
+            array<float, 2> t;
+            s >> t[0] >> t[1];
+            tex.push_back(t);
+        } else if (tag == "v") {
             Vec v;
             s >> v[0] >> v[1] >> v[2];
             verts.push_back(v);
         } else if (tag == "f") {
-            vector<int> f;
+            vector<int> f, ft;
             string x;
-            while (s >> x) f.push_back(stoi(x) - 1);
+            while (s >> x) {
+                f.push_back(stoi(x) - 1);
+                ft.push_back(stoi(x.substr(x.find('/') + 1)) - 1);
+            }
             faces.push_back(f);
+            face_tex.push_back(ft);
         }
     }
     lo = hi = verts[0][length];
@@ -84,6 +95,19 @@ void Obj::view_animation(bool show_spine) {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_LINE_STIPPLE);
 
+    if (skin != "") {
+        int w, h, n;
+        stbi_set_flip_vertically_on_load(1);
+        unsigned char* img = stbi_load(skin.c_str(), &w, &h, &n, 4);
+        GLuint id;
+        glGenTextures(1, &id);
+        glBindTexture(GL_TEXTURE_2D, id);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, img);
+        stbi_image_free(img);
+        glEnable(GL_TEXTURE_2D);
+    }
+
     float colours[4][3] = {{0.5, 0.5, 0.5}, {1, 0, 0}, {0, 0, 1}, {0, 0, 1}};
     float widths[4] = {1, 3, 1, 1};
     int stipples[4] = {0x00FF, 0xFFFF, 0x0101, 0x0101};
@@ -111,20 +135,26 @@ void Obj::view_animation(bool show_spine) {
 
         glEnable(GL_POLYGON_OFFSET_FILL);
         glPolygonOffset(1, 1);
-        glColor4f(1, 0.65, 0, show_spine ? 0.3 : 1);
-        for (auto& f : faces) {
+        if (skin == "") glColor4f(1, 0.65, 0, show_spine ? 0.3 : 1);
+        else glColor3f(1, 1, 1);
+        for (int i = 0; i < faces.size(); i++) {
             glBegin(GL_POLYGON);
-            for (int i : f) glVertex3fv(new_verts[i].data());
+            for (int j = 0; j < faces[i].size(); j++) {
+                if (skin != "") glTexCoord2fv(tex[face_tex[i][j]].data());
+                glVertex3fv(new_verts[faces[i][j]].data());
+            }
             glEnd();
         }
         glDisable(GL_POLYGON_OFFSET_FILL);
 
-        glColor3f(0, 0, 0);
-        glLineStipple(1, 0xFFFF);
-        for (auto& f : faces) {
-            glBegin(GL_LINE_LOOP);
-            for (int i : f) glVertex3fv(new_verts[i].data());
-            glEnd();
+        if (skin == "") {
+            glColor3f(0, 0, 0);
+            glLineStipple(1, 0xFFFF);
+            for (auto& f : faces) {
+                glBegin(GL_LINE_LOOP);
+                for (int i : f) glVertex3fv(new_verts[i].data());
+                glEnd();
+            }
         }
 
         if (show_spine) {

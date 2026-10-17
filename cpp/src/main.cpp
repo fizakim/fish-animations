@@ -7,8 +7,9 @@ int main() {
     auto amp = [](float t) { return 2 * t * t; };
     float freq = 0.5;
     float wl = 1;
-    bool show_spine = true;
+    std::string skin = "skins/shark.png";
+    bool show_spine = false;
 
-    Obj fish(path, length, side, amp, freq, wl);
+    Obj fish(path, length, side, amp, freq, wl, skin);
     fish.view_animation(show_spine);
 }
