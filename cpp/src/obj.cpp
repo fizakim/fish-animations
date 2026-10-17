@@ -113,8 +113,32 @@ void Obj::view_animation(bool show_spine) {
     int stipples[4] = {0x00FF, 0xFFFF, 0x0101, 0x0101};
 
     float rotX = 20, rotY = -60;
+    bool f11_down = false;
+    int win_x, win_y, win_w, win_h;
 
     while (!glfwWindowShouldClose(window)) {
+        bool f11 = glfwGetKey(window, GLFW_KEY_F11);
+        if (f11 && !f11_down) {
+            if (glfwGetWindowMonitor(window)) {
+                glfwSetWindowMonitor(window, nullptr, win_x, win_y, win_w, win_h, 0);
+            } else {
+                glfwGetWindowPos(window, &win_x, &win_y);
+                glfwGetWindowSize(window, &win_w, &win_h);
+                GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+                const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+                glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+            }
+        }
+        f11_down = f11;
+        if (glfwGetKey(window, GLFW_KEY_ESCAPE) && glfwGetWindowMonitor(window)) f11_down = false, glfwSetWindowMonitor(window, nullptr, win_x, win_y, win_w, win_h, 0);
+
+        int fb_w, fb_h;
+        glfwGetFramebufferSize(window, &fb_w, &fb_h);
+        glViewport(0, 0, fb_w, fb_h);
+        float aspect = (float)fb_w / fb_h;
+        float sx = aspect > 1 ? aspect : 1;
+        float sy = aspect > 1 ? 1 : 1 / aspect;
+
         if (glfwGetKey(window, GLFW_KEY_LEFT)) rotY -= 2;
         if (glfwGetKey(window, GLFW_KEY_RIGHT)) rotY += 2;
         if (glfwGetKey(window, GLFW_KEY_UP)) rotX -= 2;
@@ -124,7 +148,7 @@ void Obj::view_animation(bool show_spine) {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glMatrixMode(GL_PROJECTION);
         glLoadIdentity();
-        glOrtho(-2 * r, 2 * r, -2 * r, 2 * r, -4 * r, 4 * r);
+        glOrtho(-2 * r * sx, 2 * r * sx, -2 * r * sy, 2 * r * sy, -4 * r, 4 * r);
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
         glRotatef(rotX, 1, 0, 0);
