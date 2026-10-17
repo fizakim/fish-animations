@@ -1,13 +1,13 @@
 #include "obj.h"
 
 int main() {
-    std::string path = OBJECTS_DIR "/shark.obj";
+    std::string path = OBJECTS_DIR "/carp.obj";
     int length = 2;
     int side = 0;
-    auto amp = [](float t) { return 2 * t * t; };
+    auto amp = [](float t) { return 0.05 * t * t * t; };
     float freq = 0.5;
     float wl = 1;
-    std::string skin = "skins/shark.png";
+    std::string skin = "skins/carp.png";
     bool show_spine = false;
 
     Obj fish(path, length, side, amp, freq, wl, skin);
