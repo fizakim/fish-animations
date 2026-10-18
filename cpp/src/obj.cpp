@@ -7,9 +7,11 @@
 #include <GLFW/glfw3.h>
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <fstream>
 #include <sstream>
+#include <thread>
 using namespace std;
 
 Obj::Obj(string path, int length, int side, function<float(float)> amp, float freq, float wl, string skin)
@@ -116,6 +118,11 @@ void Obj::view_animation(bool show_spine) {
     bool f11_down = false;
     int win_x, win_y, win_w, win_h;
 
+    const float fps = 60;
+    int frame = 0;
+    auto start = std::chrono::steady_clock::now();
+    glfwSwapInterval(0);
+
     while (!glfwWindowShouldClose(window)) {
         bool f11 = glfwGetKey(window, GLFW_KEY_F11);
         if (f11 && !f11_down) {
@@ -154,7 +161,7 @@ void Obj::view_animation(bool show_spine) {
         glRotatef(rotX, 1, 0, 0);
         glRotatef(rotY, 0, 1, 0);
 
-        float time = glfwGetTime();
+        float time = frame / fps;
         Line new_verts = swim(time);
 
         glEnable(GL_POLYGON_OFFSET_FILL);
@@ -198,5 +205,8 @@ void Obj::view_animation(bool show_spine) {
 
         glfwSwapBuffers(window);
         glfwPollEvents();
+
+        frame++;
+        std::this_thread::sleep_until(start + std::chrono::duration<double>(frame / fps));
     }
 }
