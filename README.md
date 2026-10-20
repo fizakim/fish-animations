@@ -2,8 +2,10 @@
 
 A small program that makes a 3D fish swim. It takes a fish model and bends it from side to side following a sine wave bounded by an Amplitude(x) function to mimic real life movement. 
 
-![Carp](resources/carp1.png)
-![Shark](resources/shark1.png)
+<p align="center">
+  <img src="resources/carp1.png" width="45%" alt="Carp">
+  <img src="resources/shark1.png" width="45%" alt="Shark">
+</p>
 
 ## How it works
 
@@ -36,7 +38,7 @@ cmake --build build
 
 The original python version can be used to understand the process. Struggles to load larger models. 
 
-![Python version](resources/simple_fish1.png)
+<img src="resources/simple_fish1.png" width="45%" alt="Python version">
 
 ```
 pip install numpy matplotlib
